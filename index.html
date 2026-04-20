@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>dork-gen · google dorking tool</title>
+<style>
+  :root {
+    --bg: #0d0f11;
+    --bg2: #141618;
+    --bg3: #1c1e21;
+    --border: #2a2d31;
+    --border2: #3a3d42;
+    --text: #e2e4e8;
+    --muted: #6b7280;
+    --dim: #3d4148;
+    --green: #4ade80;
+    --green-dim: #166534;
+    --amber: #fbbf24;
+    --amber-dim: #78350f;
+    --red: #f87171;
+    --red-dim: #7f1d1d;
+    --accent: #38bdf8;
+    --accent-dim: #0c4a6e;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Layout ── */
+  .shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: -.5px;
+  }
+  .header-title span { color: var(--muted); }
+  .header-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .header-badge {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 3px 8px;
+    border: 0.5px solid var(--green-dim);
+    border-radius: 99px;
+    color: var(--green);
+    background: rgba(74,222,128,.07);
+  }
+
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-header .count {
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .panel-body { padding: 12px; }
+
+  /* ── Search ── */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 12px;
+    pointer-events: none;
+  }
+  input[type="text"], select {
+    width: 100%;
+    background: var(--bg3);
+    border: 0.5px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type="text"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  .search-input { padding-left: 28px; }
+  input::placeholder { color: var(--dim); }
+
+  /* ── Category pills ── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+  .pill {
+    padding: 3px 9px;
+    font-size: 10px;
+    font-family: var(--mono);
+    border: 0.5px solid var(--border2);
+    border-radius: 99px;
+    cursor: pointer;
+    color: var(--muted);
+    background: transparent;
+    transition: all .12s;
+  }
+  .pill:hover { color: var(--text); border-color: var(--muted); }
+  .pill.on { color: var(--green); border-color: var(--green-dim); background: rgba(74,222,128,.08); }
+
+  /* ── Payload list ── */
+  .plist {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+  .plist::-webkit-scrollbar { width: 4px; }
+  .plist::-webkit-scrollbar-track { background: transparent; }
+  .plist::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  .pi {
+    padding: 8px 10px;
+    border: 0.5px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    background: var(--bg3);
+    transition: all .12s;
+    line-height: 1.5;
+  }
+  .pi:hover { color: var(--text); border-color: var(--border2); }
+  .pi.sel { color: var(--text); border-color: var(--accent); background: rgba(56,189,248,.07); }
+  .pi-payload { font-size: 11px; display: block; margin-bottom: 3px; }
+  .pi-cat { font-size: 10px; color: var(--dim); }
+  .pi.sel .pi-cat { color: var(--accent); opacity: .7; }
+
+  .no-results { padding: 16px 0; color: var(--dim); font-size: 12px; text-align: center; }
+
+  /* ── Right panel ── */
+  .section { margin-bottom: 14px; }
+  .lbl {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .selected-payload-box {
+    padding: 10px 12px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    line-height: 1.5;
+    min-height: 44px;
+    word-break: break-all;
+  }
+  .selected-payload-box.empty { color: var(--dim); }
+
+  .input-row { display: flex; gap: 8px; }
+  .input-row input { flex: 1; }
+  .input-row select { width: 140px; flex-shrink: 0; }
+
+  select option { background: var(--bg2); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    border: 0.5px solid var(--border2);
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+    transition: all .12s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg3); border-color: var(--muted); }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+  .btn.primary {
+    width: 100%;
+    border-color: var(--green-dim);
+    color: var(--green);
+    background: rgba(74,222,128,.06);
+    margin-bottom: 12px;
+  }
+  .btn.primary:hover { background: rgba(74,222,128,.12); }
+  .btn-row { display: flex; gap: 8px; }
+  .btn-row .btn { flex: 1; font-size: 11px; }
+
+  /* ── Result URL box ── */
+  .result-box {
+    padding: 10px 12px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-all;
+    line-height: 1.6;
+    min-height: 52px;
+    margin-bottom: 10px;
+  }
+  .result-box.has-url { color: var(--text); }
+  .result-box a { color: var(--accent); }
+
+  /* ── Rate-limit bar ── */
+  .rl-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+  .rl-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background .3s;
+  }
+  .rl-dot.ok  { background: var(--green); box-shadow: 0 0 0 3px rgba(74,222,128,.15); }
+  .rl-dot.warn { background: var(--amber); box-shadow: 0 0 0 3px rgba(251,191,36,.15); }
+  .rl-dot.bad { background: var(--red); box-shadow: 0 0 0 3px rgba(248,113,113,.15); }
+  .rl-text { font-size: 11px; color: var(--muted); }
+  .rl-timer { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text); min-width: 32px; text-align: right; }
+
+  /* ── Progress bar ── */
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .9s linear, background .3s;
+    width: 0%;
+  }
+
+  /* ── History ── */
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .history-list::-webkit-scrollbar { width: 3px; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+  }
+  .history-item .hi-url {
+    flex: 1;
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-item .hi-time {
+    font-size: 10px;
+    color: var(--dim);
+    flex-shrink: 0;
+  }
+  .history-item .hi-open {
+    font-size: 10px;
+    color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .history-item .hi-open:hover { text-decoration: underline; }
+  .empty-hist { font-size: 11px; color: var(--dim); padding: 8px 0; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 14px 0; }
+
+  /* ── Tips ── */
+  .tip {
+    font-size: 10px;
+    color: var(--dim);
+    line-height: 1.7;
+  }
+  .tip span { color: var(--amber); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 8px 14px;
+    background: var(--bg3);
+    border: 0.5px solid var(--green-dim);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--green);
+    font-family: var(--mono);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all .2s;
+    pointer-events: none;
+    z-index: 99;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- header -->
+  <div class="header">
+    <div>
+      <div class="header-title">dork<span>-</span>gen</div>
+    </div>
+    <div class="header-sub">google dorking tool · anti rate-limit mode</div>
+    <div class="header-badge">● anti-rl active</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ── LEFT: payload library ── -->
+    <div class="panel">
+      <div class="panel-header">
+        payload library
+        <span class="count" id="payloadCount">0 payloads</span>
+      </div>
+      <div class="panel-body">
+        <!-- search -->
+        <div class="search-wrap">
+          <span class="search-icon">/</span>
+          <input class="search-input" type="text" id="searchInput" placeholder="search payloads..." oninput="renderPayloads()" />
+        </div>
+        <!-- categories -->
+        <div class="pills" id="catPills"></div>
+        <!-- list -->
+        <div class="plist" id="payloadList"></div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: generator ── -->
+    <div>
+
+      <!-- selected payload -->
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="panel-header">selected payload</div>
+        <div class="panel-body">
+          <div class="selected-payload-box empty" id="selectedDisplay">
+            — pilih payload dari library
+          </div>
+        </div>
+      </div>
+
+      <!-- builder -->
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="panel-header">url builder</div>
+        <div class="panel-body">
+
+          <div class="section">
+            <span class="lbl">target domain</span>
+            <div class="input-row">
+              <input type="text" id="targetInput" placeholder="example.com" />
+              <select id="domainSelect">
+                <option value="google.com">google.com</option>
+                <option value="google.co.id">google.co.id</option>
+                <option value="google.co.uk">google.co.uk</option>
+                <option value="google.com.au">google.com.au</option>
+                <option value="google.co.jp">google.co.jp</option>
+                <option value="google.de">google.de</option>
+                <option value="google.fr">google.fr</option>
+                <option value="google.ca">google.ca</option>
+                <option value="google.com.sg">google.com.sg</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn primary" onclick="generateURL()">
+            ▶ generate dork url
+          </button>
+
+          <div class="section">
+            <span class="lbl">generated url</span>
+            <div class="result-box" id="resultBox">— belum ada url yang di-generate</div>
+            <div class="btn-row">
+              <button class="btn" id="copyBtn" onclick="copyURL()" disabled>⎘ copy</button>
+              <button class="btn" id="openBtn" onclick="openURL()" disabled>↗ open</button>
+              <button class="btn" onclick="rotateDomain()">⟳ rotate domain</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- anti rate-limit status -->
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="panel-header">rate-limit monitor</div>
+        <div class="panel-body">
+          <div class="rl-bar">
+            <div class="rl-dot ok" id="rlDot"></div>
+            <span class="rl-text" id="rlStatus">ready — no recent queries</span>
+            <span class="rl-timer" id="rlTimer"></span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="tip">
+            <span>⚠ tips:</span> jeda minimal <span>20–30 detik</span> antar query ·
+            rotate domain setiap <span>5–7 query</span> · hindari membuka >10 URL dalam 5 menit ·
+            gunakan <span>num=10</span> bukan num=100
+          </div>
+        </div>
+      </div>
+
+      <!-- query history -->
+      <div class="panel">
+        <div class="panel-header">
+          query history (session)
+          <span style="cursor:pointer;color:var(--muted);font-size:10px;" onclick="clearHistory()">clear</span>
+        </div>
+        <div class="panel-body">
+          <div class="history-list" id="historyList">
+            <div class="empty-hist">belum ada query dalam session ini</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end right -->
+  </div><!-- end grid -->
+</div><!-- end shell -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PAYLOADS = [
+  // ── Exposed Files ──
+  { id: 1,  cat: "Exposed Files",    payload: 'filetype:pdf "confidential" site:{target}' },
+  { id: 2,  cat: "Exposed Files",    payload: 'filetype:xls "password" site:{target}' },
+  { id: 3,  cat: "Exposed Files",    payload: 'filetype:sql site:{target}' },
+  { id: 4,  cat: "Exposed Files",    payload: 'filetype:log site:{target}' },
+  { id: 5,  cat: "Exposed Files",    payload: 'filetype:env site:{target}' },
+  { id: 6,  cat: "Exposed Files",    payload: 'ext:backup site:{target}' },
+  { id: 7,  cat: "Exposed Files",    payload: 'filetype:bak site:{target}' },
+  { id: 8,  cat: "Exposed Files",    payload: 'filetype:xml site:{target}' },
+  { id: 9,  cat: "Exposed Files",    payload: 'filetype:json site:{target}' },
+  { id: 10, cat: "Exposed Files",    payload: 'filetype:yaml site:{target}' },
+
+  // ── Admin Panels ──
+  { id: 11, cat: "Admin Panels",     payload: 'inurl:admin site:{target}' },
+  { id: 12, cat: "Admin Panels",     payload: 'inurl:login site:{target}' },
+  { id: 13, cat: "Admin Panels",     payload: 'intitle:"admin panel" site:{target}' },
+  { id: 14, cat: "Admin Panels",     payload: 'inurl:wp-admin site:{target}' },
+  { id: 15, cat: "Admin Panels",     payload: 'inurl:dashboard site:{target}' },
+  { id: 16, cat: "Admin Panels",     payload: 'intitle:"phpMyAdmin" site:{target}' },
+  { id: 17, cat: "Admin Panels",     payload: 'inurl:cpanel site:{target}' },
+  { id: 18, cat: "Admin Panels",     payload: 'inurl:administrator site:{target}' },
+  { id: 19, cat: "Admin Panels",     payload: 'intitle:"Grafana" inurl:login site:{target}' },
+  { id: 20, cat: "Admin Panels",     payload: 'intitle:"Jenkins" inurl:login site:{target}' },
+
+  // ── Config & Backup ──
+  { id: 21, cat: "Config & Backup",  payload: 'inurl:config.php site:{target}' },
+  { id: 22, cat: "Config & Backup",  payload: 'inurl:.git site:{target}' },
+  { id: 23, cat: "Config & Backup",  payload: 'filetype:ini site:{target}' },
+  { id: 24, cat: "Config & Backup",  payload: 'inurl:backup site:{target}' },
+  { id: 25, cat: "Config & Backup",  payload: 'intitle:"index of" site:{target}' },
+  { id: 26, cat: "Config & Backup",  payload: 'inurl:wp-config.php site:{target}' },
+  { id: 27, cat: "Config & Backup",  payload: 'inurl:.svn site:{target}' },
+  { id: 28, cat: "Config & Backup",  payload: 'inurl:.DS_Store site:{target}' },
+  { id: 29, cat: "Config & Backup",  payload: 'inurl:docker-compose site:{target}' },
+  { id: 30, cat: "Config & Backup",  payload: 'intitle:"index of" ".env" site:{target}' },
+
+  // ── Sensitive Info ──
+  { id: 31, cat: "Sensitive Info",   payload: 'intext:"api_key" site:{target}' },
+  { id: 32, cat: "Sensitive Info",   payload: 'intext:"password" filetype:txt site:{target}' },
+  { id: 33, cat: "Sensitive Info",   payload: 'intext:"secret_key" site:{target}' },
+  { id: 34, cat: "Sensitive Info",   payload: 'intext:"BEGIN RSA PRIVATE KEY" site:{target}' },
+  { id: 35, cat: "Sensitive Info",   payload: 'intext:"DB_PASSWORD" site:{target}' },
+  { id: 36, cat: "Sensitive Info",   payload: 'intext:"Authorization: Bearer" site:{target}' },
+  { id: 37, cat: "Sensitive Info",   payload: 'intext:"access_token" site:{target}' },
+  { id: 38, cat: "Sensitive Info",   payload: 'intext:"client_secret" site:{target}' },
+  { id: 39, cat: "Sensitive Info",   payload: 'intext:"AWS_SECRET_ACCESS_KEY" site:{target}' },
+  { id: 40, cat: "Sensitive Info",   payload: 'intext:"PRIVATE KEY" filetype:pem site:{target}' },
+
+  // ── Error Pages ──
+  { id: 41, cat: "Error Pages",      payload: 'intext:"sql syntax near" site:{target}' },
+  { id: 42, cat: "Error Pages",      payload: 'intext:"Warning: mysql_fetch" site:{target}' },
+  { id: 43, cat: "Error Pages",      payload: 'intext:"ORA-01756" site:{target}' },
+  { id: 44, cat: "Error Pages",      payload: 'intext:"Stack trace:" site:{target}' },
+  { id: 45, cat: "Error Pages",      payload: 'intitle:"500 Internal Server Error" site:{target}' },
+  { id: 46, cat: "Error Pages",      payload: 'intext:"Traceback (most recent call" site:{target}' },
+  { id: 47, cat: "Error Pages",      payload: 'intext:"PHP Parse error" site:{target}' },
+
+  // ── Subdomains & Endpoints ──
+  { id: 48, cat: "Subdomains",       payload: 'site:{target} -www' },
+  { id: 49, cat: "Subdomains",       payload: 'site:*.{target}' },
+  { id: 50, cat: "Subdomains",       payload: 'inurl:api site:{target}' },
+  { id: 51, cat: "Subdomains",       payload: 'inurl:dev site:{target}' },
+  { id: 52, cat: "Subdomains",       payload: 'inurl:staging site:{target}' },
+  { id: 53, cat: "Subdomains",       payload: 'inurl:test site:{target}' },
+  { id: 54, cat: "Subdomains",       payload: 'inurl:beta site:{target}' },
+  { id: 55, cat: "Subdomains",       payload: 'inurl:internal site:{target}' },
+
+  // ── Open Redirect ──
+  { id: 56, cat: "Open Redirect",    payload: 'inurl:"redirect=" site:{target}' },
+  { id: 57, cat: "Open Redirect",    payload: 'inurl:"next=" site:{target}' },
+  { id: 58, cat: "Open Redirect",    payload: 'inurl:"url=" site:{target}' },
+  { id: 59, cat: "Open Redirect",    payload: 'inurl:"return=" site:{target}' },
+  { id: 60, cat: "Open Redirect",    payload: 'inurl:"goto=" site:{target}' },
+  { id: 61, cat: "Open Redirect",    payload: 'inurl:"forward=" site:{target}' },
+];
+
+const GOOGLE_DOMAINS = [
+  'google.com','google.co.id','google.co.uk','google.com.au',
+  'google.co.jp','google.de','google.fr','google.ca','google.com.sg'
+];
+
+const CATEGORIES = ['All', ...new Set(PAYLOADS.map(p => p.cat))];
+
+let selectedCat    = 'All';
+let selectedPayload = null;
+let generatedURL   = '';
+let lastOpenTime   = 0;
+let cooldownSec    = 0;
+let cooldownTotal  = 0;
+let cooldownTimer  = null;
+let history        = [];
+
+// ── Init ──
+function init() {
+  const pills = document.getElementById('catPills');
+  CATEGORIES.forEach(cat => {
+    const el = document.createElement('div');
+    el.className = 'pill' + (cat === 'All' ? ' on' : '');
+    el.textContent = cat === 'All' ? `all (${PAYLOADS.length})` : cat;
+    el.onclick = () => selectCat(cat, el);
+    pills.appendChild(el);
+  });
+  renderPayloads();
+}
+
+function selectCat(cat, el) {
+  selectedCat = cat;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  renderPayloads();
+}
+
+function renderPayloads() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = PAYLOADS.filter(p => {
+    const matchCat  = selectedCat === 'All' || p.cat === selectedCat;
+    const matchSrch = !q || p.payload.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q);
+    return matchCat && matchSrch;
+  });
+
+  document.getElementById('payloadCount').textContent = `${filtered.length} payloads`;
+
+  const list = document.getElementById('payloadList');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="no-results">no payloads found</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => `
+    <div class="pi${selectedPayload && selectedPayload.id === p.id ? ' sel' : ''}" onclick="selectPayload(${p.id})">
+      <span class="pi-payload">${p.payload}</span>
+      <span class="pi-cat">[${p.cat}]</span>
+    </div>
+  `).join('');
+}
+
+function selectPayload(id) {
+  selectedPayload = PAYLOADS.find(p => p.id === id);
+  const box = document.getElementById('selectedDisplay');
+  box.textContent = selectedPayload.payload;
+  box.classList.remove('empty');
+  resetResult();
+  renderPayloads();
+}
+
+function resetResult() {
+  generatedURL = '';
+  const rb = document.getElementById('resultBox');
+  rb.textContent = '— belum ada url yang di-generate';
+  rb.classList.remove('has-url');
+  document.getElementById('copyBtn').disabled = true;
+  document.getElementById('openBtn').disabled = true;
+}
+
+// ── Generate ──
+function generateURL() {
+  if (!selectedPayload) { showToast('pilih payload terlebih dahulu', 'warn'); return; }
+  const target = document.getElementById('targetInput').value.trim();
+  if (!target) { showToast('masukkan target domain', 'warn'); return; }
+
+  const domain = document.getElementById('domainSelect').value;
+  const q = selectedPayload.payload.replaceAll('{target}', target);
+  generatedURL = `https://www.${domain}/search?q=${encodeURIComponent(q)}&num=10`;
+
+  const rb = document.getElementById('resultBox');
+  rb.innerHTML = `<a href="${generatedURL}" target="_blank">${generatedURL}</a>`;
+  rb.classList.add('has-url');
+
+  document.getElementById('copyBtn').disabled = false;
+  document.getElementById('openBtn').disabled = false;
+  showToast('url berhasil di-generate');
+}
+
+// ── Copy ──
+function copyURL() {
+  if (!generatedURL) return;
+  navigator.clipboard.writeText(generatedURL).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ copied!';
+    setTimeout(() => btn.textContent = '⎘ copy', 1800);
+    showToast('url disalin ke clipboard');
+  });
+}
+
+// ── Open (with anti-RL check) ──
+function openURL() {
+  if (!generatedURL) return;
+
+  const now     = Date.now();
+  const elapsed = (now - lastOpenTime) / 1000;
+  const MIN_GAP = 20;
+
+  if (lastOpenTime > 0 && elapsed < MIN_GAP) {
+    const remaining = Math.ceil(MIN_GAP - elapsed);
+    const go = confirm(
+      `⚠ Rate-limit warning\n\n` +
+      `Baru ${Math.round(elapsed)}s sejak query terakhir.\n` +
+      `Rekomendasi jeda: ${MIN_GAP}s\n\n` +
+      `Lanjutkan tetap buka? (berisiko CAPTCHA)`
+    );
+    if (!go) return;
+  }
+
+  window.open(generatedURL, '_blank');
+  lastOpenTime = now;
+  addHistory(generatedURL);
+  startCooldown(MIN_GAP);
+}
+
+// ── Domain rotate ──
+function rotateDomain() {
+  const sel = document.getElementById('domainSelect');
+  sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+  showToast(`domain: ${sel.value}`);
+  if (generatedURL) generateURL();
+}
+
+// ── Cooldown ──
+function startCooldown(secs) {
+  if (cooldownTimer) clearInterval(cooldownTimer);
+  cooldownSec   = secs;
+  cooldownTotal = secs;
+  updateRL();
+  cooldownTimer = setInterval(() => {
+    cooldownSec--;
+    if (cooldownSec <= 0) { clearInterval(cooldownTimer); cooldownTimer = null; cooldownSec = 0; }
+    updateRL();
+  }, 1000);
+}
+
+function updateRL() {
+  const dot    = document.getElementById('rlDot');
+  const status = document.getElementById('rlStatus');
+  const timer  = document.getElementById('rlTimer');
+  const fill   = document.getElementById('progressFill');
+
+  const pct = cooldownTotal > 0 ? ((cooldownTotal - cooldownSec) / cooldownTotal) * 100 : 100;
+
+  if (cooldownSec > 10) {
+    dot.className     = 'rl-dot bad';
+    status.textContent = 'cooldown aktif — tunggu sebelum query berikutnya';
+    fill.style.background = '#A32D2D';
+  } else if (cooldownSec > 0) {
+    dot.className     = 'rl-dot warn';
+    status.textContent = 'hampir siap...';
+    fill.style.background = '#78350f';
+  } else {
+    dot.className     = 'rl-dot ok';
+    status.textContent = lastOpenTime > 0 ? `last query: ${timeSince(lastOpenTime)} ago` : 'ready — no recent queries';
+    fill.style.background = '#166534';
+  }
+
+  timer.textContent   = cooldownSec > 0 ? `${cooldownSec}s` : '';
+  fill.style.width    = `${pct}%`;
+}
+
+function timeSince(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) return `${s}s`;
+  return `${Math.round(s/60)}m`;
+}
+
+// ── History ──
+function addHistory(url) {
+  history.unshift({ url, time: Date.now() });
+  if (history.length > 20) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!history.length) {
+    list.innerHTML = '<div class="empty-hist">belum ada query dalam session ini</div>';
+    return;
+  }
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item">
+      <span class="hi-url" title="${h.url}">${h.url}</span>
+      <span class="hi-time">${timeSince(h.time)} ago</span>
+      <span class="hi-open" onclick="window.open('${h.url}','_blank')">open</span>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  history = [];
+  renderHistory();
+  showToast('history cleared');
+}
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = type === 'warn' ? 'var(--amber-dim)' : 'var(--green-dim)';
+  t.style.color       = type === 'warn' ? 'var(--amber)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Tick (update timeSince in RL bar) ──
+setInterval(() => { if (!cooldownTimer && lastOpenTime > 0) updateRL(); }, 5000);
+
+init();
+</script>
+</body>
+</html>
